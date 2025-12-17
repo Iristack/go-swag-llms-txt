@@ -1,0 +1,345 @@
+# Swag 注释生成指南
+
+## 简介
+
+Swag 是一个 Go 工具，可以将代码中的注释转换为 Swagger 2.0 文档。本指南将指导你如何为 API 端点添加正确的注释，使生成的 Swagger 文档清晰、完整且专业。
+
+## 核心原则
+
+1. **注释必须在代码中**：所有 Swagger 注释必须放在 Go 代码中，不能单独放在文件中
+2. **遵循格式**：注释必须使用 `// @` 开头
+3. **位置重要**：API 操作注释应放在函数定义上方
+
+## 1. 通用 API 信息（放在 main.go 中）
+
+```go
+// @title           API 名称
+// @version         1.0
+// @description     简短描述
+// @termsOfService  http://yourdomain.com/terms/
+
+// @contact.name   联系人名称
+// @contact.url    http://yourdomain.com/contact
+// @contact.email  contact@yourdomain.com
+
+// @license.name  许可证名称
+// @license.url   http://yourdomain.com/license
+
+// @host      api.yourdomain.com:8080
+// @BasePath  /api/v1
+
+// @schemes http https
+```
+
+### 重要提示
+- `@title` 和 `@version` 是**必填项**
+- 用 `@description.markdown` 可以加载 markdown 文件内容
+
+## 2. API 操作注释（放在控制器方法上方）
+
+### 基础格式
+```go
+// @Summary       简短摘要
+// @Description   详细描述
+// @Tags          标签
+// @Accept        mime类型
+// @Produce       mime类型
+// @Param         参数名  参数类型  数据类型  是否必须  描述  属性
+// @Success       200  {数据类型}  数据结构  描述
+// @Failure       400  {object}  错误结构  描述
+// @Router        路径 [HTTP方法]
+```
+
+### 常见属性
+
+#### 参数类型 (Param Type)
+- `query`: 查询参数
+- `path`: 路径参数
+- `header`: 请求头
+- `body`: 请求体
+- `formData`: 表单数据
+
+#### 数据类型 (Data Type)
+- `string`, `int`, `float`, `bool`, `file`
+- 自定义结构体
+
+#### 属性 (Attributes)
+```go
+// @Param         id       path      int     true      "账户ID"  minimum(1)
+// @Param         name     query     string  false     "姓名"    maxlength(50)
+// @Param         email    query     string  false     "邮箱"    format(email)
+// @Param         data     body      model.User  true  "用户数据"
+// @Param         token    header    string  true      "认证令牌"
+```
+
+### 常见场景示例
+
+#### 获取单个资源
+```go
+// @Summary       获取账户
+// @Description   通过ID获取账户详情
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         id   path      int  true  "账户ID"
+// @Success       200  {object}  model.Account
+// @Failure       404  {object}  httputil.HTTPError
+// @Router        /accounts/{id} [get]
+func (c *Controller) GetAccount(ctx *gin.Context) {
+    // ...
+}
+```
+
+#### 列表查询
+```go
+// @Summary       列出账户
+// @Description   按条件查询账户列表
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         q    query     string  false  "搜索关键词"  Format(email)
+// @Param         page query     int     false  "页码"      default(1)
+// @Param         size query     int     false  "每页数量"  default(10) maximum(100)
+// @Success       200  {array}   model.Account
+// @Failure       400  {object}  httputil.HTTPError
+// @Router        /accounts [get]
+func (c *Controller) ListAccounts(ctx *gin.Context) {
+    // ...
+}
+```
+
+#### 创建资源
+```go
+// @Summary       创建账户
+// @Description   创建新账户
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         account body model.CreateAccount true "账户数据"
+// @Success       201  {object}  model.Account
+// @Failure       400  {object}  httputil.HTTPError
+// @Router        /accounts [post]
+func (c *Controller) CreateAccount(ctx *gin.Context) {
+    // ...
+}
+```
+
+#### 带枚举值的参数
+```go
+// @Param         status query     string  false  "状态"  Enums(active, inactive, pending)
+```
+
+#### 带示例的参数
+```go
+// @Param         email    query     string  false     "邮箱"    example(user@example.com)
+```
+
+#### 带正则表达式的参数
+```go
+// @Param         phone    query     string  false     "电话"    pattern("^\\+?[0-9]{10,15}$")
+```
+
+#### 带数组格式的参数
+```go
+// @Param         ids      query     []string false  "ID列表"  collectionFormat(multi)
+```
+
+## 3. 结构体注释
+
+### 基础结构体
+```go
+// Account 用户账户模型
+type Account struct {
+    ID       int    `json:"id" example:"1"`
+    Name     string `json:"name" example:"John Doe" maxlength(50)`
+    Email    string `json:"email" example:"john@example.com" format(email)`
+    Active   bool   `json:"active" example:"true"`
+}
+```
+
+### 带枚举的结构体
+```go
+// UserStatus 用户状态
+type UserStatus string
+
+const (
+    Active   UserStatus = "active"
+    Inactive UserStatus = "inactive"
+    Pending  UserStatus = "pending"
+)
+
+// User 用户模型
+type User struct {
+    ID       int            `json:"id"`
+    Name     string         `json:"name"`
+    Status   UserStatus     `json:"status" enums:"active,inactive,pending"`
+}
+```
+
+### 自定义类型支持
+```go
+type TimestampTime struct {
+    time.Time
+}
+
+// @swaggertype primitive,integer
+// @format unix
+// @example 1625097600
+func (t *TimestampTime) MarshalJSON() ([]byte, error) {
+    // ...
+}
+```
+
+## 4. 重要提示
+
+1. **注释必须在函数定义上方**：Swag 会扫描函数上方的注释
+2. **使用正确的缩进**：每个注释应独立一行
+3. **避免在注释中使用特殊字符**：如 `@`、`{`、`}`，除非是用于 Swagger 语法
+4. **使用 `@description.markdown`**：对于长描述，使用 `@description.markdown` 指向 markdown 文件
+
+## 5. 实用技巧
+
+### 1. 使用 markdown 描述
+创建 `api.md` 文件，内容如下：
+```markdown
+# API 说明
+
+这是一个用于管理账户的 API。
+
+## 特点
+- 支持分页查询
+- 支持按名称搜索
+- 支持状态过滤
+```
+
+在代码中：
+```go
+// @description.markdown api.md
+```
+
+### 2. 重命名模型
+```go
+// @name UserResponse
+type UserResponse struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+```
+
+### 3. 排除字段
+```go
+type Account struct {
+    ID       int    `json:"id"`
+    Password string `json:"password" swaggerignore:"true"`
+}
+```
+
+### 4. 添加扩展属性
+```go
+type Account struct {
+    ID       int    `json:"id"`
+    // @extensions x-nullable=true x-abc=def
+    Description string `json:"description"`
+}
+```
+
+### 5. 处理嵌套结构
+```go
+// @Success 200 {object} jsonresult.JSONResult{data=proto.Order}
+```
+
+## 6. 常见错误
+
+1. **注释格式错误**：确保使用 `// @` 开头
+2. **缺少必填字段**：`@title` 和 `@version` 是必填的
+3. **参数类型错误**：确保 `path`、`query` 等参数类型正确
+4. **结构体未导出**：确保结构体字段是导出的（首字母大写）
+5. **缺少 `swag init`**：运行 `swag init` 生成文档
+
+## 7. 最佳实践
+
+1. **保持简洁**：摘要要简短，描述要详细
+2. **使用标准术语**：如 "ID"、"name"、"status" 等
+3. **提供示例**：特别是对于复杂结构
+4. **使用枚举**：对于有限状态的字段
+5. **验证参数**：使用 `minimum`、`maximum`、`pattern` 等
+
+## 8. 生成文档
+
+```bash
+swag init
+```
+
+然后在代码中添加：
+```go
+import (
+    "github.com/swaggo/gin-swagger"
+    "github.com/swaggo/files"
+)
+
+r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+```
+
+## 9. 总结
+
+| 类型 | 必填 | 示例 |
+|------|------|------|
+| @title | ✓ | `// @title My API` |
+| @version | ✓ | `// @version 1.0` |
+| @description | | `// @description This is my API` |
+| @tags | ✓ | `// @Tags users,accounts` |
+| @Param | ✓ | `// @Param id path int true "Account ID"` |
+| @Success | ✓ | `// @Success 200 {object} model.Account` |
+| @Router | ✓ | `// @Router /accounts/{id} [get]` |
+
+
+# Swag 注释生成规范
+
+## 1. 代码分析
+- 精准识别需添加 Swag 注释的目标函数列表
+- 仅处理被路由系统注册的函数（忽略未注册的辅助函数）
+
+## 2. 函数解析
+- **输入参数**：明确标注参数类型、位置（path/query/body）、是否必需
+- **返回值**：严格关联结构体定义（必须定位至结构体声明文件）
+- **关键动作**：通过文件路径跳转至结构体定义（如 `models/user.go`），确认类型定义
+
+## 3. 路由确认（强制要求）
+- **必须获取完整路由路径**（包含基础前缀，如 `/api/v1`）
+- **操作规范**：
+  1. 从函数调用层级向上追溯路由注册点
+  2. 定位基础前缀：查找 `router.Group("/api/v1")` 或 `router.Use("/api/v1")` 等路由组定义
+  3. 验证完整路径 = 基础前缀 + 函数注册路径（如 `"/api/v1/users/{id}"`）
+- **禁止行为**：不得省略基础前缀（如错误写为 `"/users/{id}"`）
+
+## 4. 注释生成与验证
+- **注释格式**：
+  ```go
+  // @Router /api/v1/{完整路径} [http_method]  // 必须包含基础前缀
+  ```
+- **验证清单**：
+  | 验证项                | 检查点                          | 通过标准               |
+  |-----------------------|--------------------------------|-----------------------|
+  | 路由完整性            | 是否包含基础前缀               | 100% 包含 `/api/v1`   |
+  | 参数匹配              | 参数名/位置是否与函数一致      | 与 `c.Param`/`c.Query` 一致 |
+  | 结构体关联            | 返回值类型是否指向正确结构体   | 与 `models/User` 完全匹配 |
+  | 路由方法一致性        | `[get]`/`[post]` 是否匹配注册  | 与 `router.GET`/`POST` 一致 |
+
+## 5. 示例（正确用法）
+```go
+// @Summary 获取用户详情
+// @Description 通过用户ID获取用户信息
+// @Produce json
+// @Param id path string true "用户ID"
+// @Success 200 {object} models.User
+// @Router /api/v1/users/{id} [get]  // ✅ 包含基础前缀
+```
+
+## 6. 错误示例（必须避免）
+```go
+// @Router /users/{id} [get]  // ❌ 缺少基础前缀 /api/v1
+```
+
+> **执行准则**：路由前缀缺失将导致 API 文档与实际服务路径不匹配，必须通过路由组定义强制确认。所有生成的 `@Router` 指令必须包含完整基础路径（如 `/api/v1`），不得以任何理由省略。
+
+请按照这些指南, 为用户编写注释，生成专业、完整的 Swagger 文档！
