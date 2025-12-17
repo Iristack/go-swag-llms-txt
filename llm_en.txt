@@ -1,0 +1,296 @@
+# Swag Comment Generation Guide
+
+## Introduction
+
+Swag is a Go tool that converts code comments into Swagger 2.0 documentation. This guide explains how to add proper comments to API endpoints to generate clear, complete, and professional Swagger documentation.
+
+## Core Principles
+
+1. **Comments must be in code**: All Swagger comments must be placed directly in Go code
+2. **Follow format**: Comments must start with `// @`
+3. **Position matters**: API operation comments should be placed above function definitions
+
+## 1. General API Information (main.go)
+
+```go
+// @title           API Title
+// @version         1.0
+// @description     Short description
+// @termsOfService  http://yourdomain.com/terms/
+
+// @contact.name   Contact Name
+// @contact.url    http://yourdomain.com/contact
+// @contact.email  contact@yourdomain.com
+
+// @license.name  License Name
+// @license.url   http://yourdomain.com/license
+
+// @host      api.yourdomain.com:8080
+// @BasePath  /api/v1
+
+// @schemes http https
+```
+
+### Important Notes
+- `@title` and `@version` are **required fields**
+- Use `@description.markdown` to load markdown file content
+
+## 2. API Operation Comments (Controller Methods)
+
+### Basic Format
+```go
+// @Summary       Short summary
+// @Description   Detailed description
+// @Tags          Tags
+// @Accept        MIME type
+// @Produce       MIME type
+// @Param         param_name  param_type  data_type  required  description  attributes
+// @Success       200  {data_type}  data_structure  description
+// @Failure       400  {object}  error_structure  description
+// @Router        path [HTTP_method]
+```
+
+### Common Attributes
+
+#### Parameter Types
+- `query`: Query parameter
+- `path`: Path parameter
+- `header`: Request header
+- `body`: Request body
+- `formData`: Form data
+
+#### Data Types
+- `string`, `int`, `float`, `bool`, `file`
+- Custom structures
+
+#### Attributes
+```go
+// @Param         id       path      int     true      "Account ID"  minimum(1)
+// @Param         name     query     string  false     "Name"    maxlength(50)
+// @Param         email    query     string  false     "Email"    format(email)
+// @Param         data     body      model.User  true  "User data"
+// @Param         token    header    string  true      "Authentication token"
+```
+
+### Common Scenario Examples
+
+#### Get Single Resource
+```go
+// @Summary       Get Account
+// @Description   Get account details by ID
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         id   path      int  true  "Account ID"
+// @Success       200  {object}  model.Account
+// @Failure       404  {object}  httputil.HTTPError
+// @Router        /api/v1/accounts/{id} [get]
+func (c *Controller) GetAccount(ctx *gin.Context) {
+    // ...
+}
+```
+
+#### List Query
+```go
+// @Summary       List Accounts
+// @Description   Query accounts by conditions
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         q    query     string  false  "Search keyword"  Format(email)
+// @Param         page query     int     false  "Page number"      default(1)
+// @Param         size query     int     false  "Items per page"  default(10) maximum(100)
+// @Success       200  {array}   model.Account
+// @Failure       400  {object}  httputil.HTTPError
+// @Router        /api/v1/accounts [get]
+func (c *Controller) ListAccounts(ctx *gin.Context) {
+    // ...
+}
+```
+
+#### Create Resource
+```go
+// @Summary       Create Account
+// @Description   Create new account
+// @Tags          accounts
+// @Accept        json
+// @Produce       json
+// @Param         account body model.CreateAccount true "Account data"
+// @Success       201  {object}  model.Account
+// @Failure       400  {object}  httputil.HTTPError
+// @Router        /api/v1/accounts [post]
+func (c *Controller) CreateAccount(ctx *gin.Context) {
+    // ...
+}
+```
+
+## 3. Structure Comments
+
+### Basic Structure
+```go
+// Account User account model
+type Account struct {
+    ID       int    `json:"id" example:"1"`
+    Name     string `json:"name" example:"John Doe" maxlength(50)`
+    Email    string `json:"email" example:"john@example.com" format(email)`
+    Active   bool   `json:"active" example:"true"`
+}
+```
+
+### Enum Structure
+```go
+// UserStatus User status
+type UserStatus string
+
+const (
+    Active   UserStatus = "active"
+    Inactive UserStatus = "inactive"
+    Pending  UserStatus = "pending"
+)
+
+// User User model
+type User struct {
+    ID       int            `json:"id"`
+    Name     string         `json:"name"`
+    Status   UserStatus     `json:"status" enums:"active,inactive,pending"`
+}
+```
+
+## 4. Important Notes
+
+1. **Comments must be above function definitions**: Swag scans comments above functions
+2. **Use proper indentation**: Each comment should be on a separate line
+3. **Avoid special characters**: Like `@`, `{`, `}` unless for Swagger syntax
+4. **Use `@description.markdown`**: For long descriptions
+
+## 5. Practical Tips
+
+### Markdown Description
+Create `api.md`:
+```markdown
+# API Documentation
+
+Account management API
+
+## Features
+- Pagination support
+- Name search
+- Status filtering
+```
+
+In code:
+```go
+// @description.markdown api.md
+```
+
+### Rename Model
+```go
+// @name UserResponse
+type UserResponse struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+```
+
+### Exclude Field
+```go
+type Account struct {
+    ID       int    `json:"id"`
+    Password string `json:"password" swaggerignore:"true"`
+}
+```
+
+## 6. Common Mistakes
+
+1. **Wrong comment format**: Must start with `// @`
+2. **Missing required fields**: `@title` and `@version` are required
+3. **Parameter type errors**: Ensure `path`, `query` etc. are correct
+4. **Unexported struct fields**: Fields must be exported (capitalized)
+5. **Missing `swag init`**: Run `swag init` to generate docs
+
+## 7. Best Practices
+
+1. **Keep it concise**: Short summaries, detailed descriptions
+2. **Use standard terms**: Like "ID", "name", "status"
+3. **Provide examples**: Especially for complex structures
+4. **Use enums**: For finite state fields
+5. **Validate parameters**: Use `minimum`, `maximum`, `pattern`
+
+## 8. Document Generation
+
+```bash
+swag init
+```
+
+Add to code:
+```go
+import (
+    "github.com/swaggo/gin-swagger"
+    "github.com/swaggo/files"
+)
+
+r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+```
+
+## 9. Summary
+
+| Type | Required | Example |
+|------|----------|---------|
+| @title | ✓ | `// @title My API` |
+| @version | ✓ | `// @version 1.0` |
+| @description | | `// @description This is my API` |
+| @tags | ✓ | `// @Tags users,accounts` |
+| @Param | ✓ | `// @Param id path int true "Account ID"` |
+| @Success | ✓ | `// @Success 200 {object} model.Account` |
+| @Router | ✓ | `// @Router /api/v1/accounts/{id} [get]` |
+
+# Swag Comment Specification
+
+## 1. Code Analysis
+- Identify target functions requiring Swag comments
+- Focus only on functions registered in routing system
+
+## 2. Function Parsing
+- **Input parameters**: Specify type, location (path/query/body), required status
+- **Return values**: Strictly associate with structure definitions
+- **Key action**: Verify type definitions by navigating to structure declaration files
+
+## 3. Route Verification (Mandatory)
+- **Must obtain full route path** (including base prefix like `/api/v1`)
+- **Procedure**:
+  1. Trace route registration point upward through call hierarchy
+  2. Identify base prefix: Find `router.Group("/api/v1")` or similar route group definition
+  3. Validate full path = base prefix + function registration path
+- **Prohibited**: Never omit base prefix (e.g. `/users/{id}` is invalid)
+
+## 4. Comment Generation & Verification
+- **Format**:
+  ```go
+  // @Router /api/v1/{full_path} [http_method]  // Must include base prefix
+  ```
+- **Verification Checklist**:
+  | Validation Item | Checkpoints | Pass Criteria |
+  |-----------------|-------------|---------------|
+  | Route Completeness | Contains base prefix | 100% includes `/api/v1` |
+  | Parameter Match | Parameter name/location matches function | Matches `c.Param`/`c.Query` |
+  | Structure Association | Return type matches correct structure | Matches `models/User` |
+  | Route Method Consistency | `[get]`/`[post]` matches registration | Matches `router.GET`/`POST` |
+
+## 5. Valid Example
+```go
+// @Summary Get User Details
+// @Description Get user information by ID
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} models.User
+// @Router /api/v1/users/{id} [get]  // ✅ Includes base prefix
+```
+
+## 6. Invalid Example
+```go
+// @Router /users/{id} [get]  // ❌ Missing base prefix /api/v1
+```
+
+> **Execution Rule**: Missing route prefix causes documentation-service path mismatch. Must enforce through route group definition. All `@Router` directives must include complete base path (e.g., `/api/v1`). No exceptions allowed.
+
+Please follow these guidelines to write annotations for the user and generate a professional, complete Swagger documentation!
