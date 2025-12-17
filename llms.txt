@@ -39,6 +39,7 @@ Swag 是一个 Go 工具，可以将代码中的注释转换为 Swagger 2.0 文�
 
 ### 基础格式
 ```go
+// FunctionName godoc
 // @Summary       简短摘要
 // @Description   详细描述
 // @Tags          标签
@@ -76,6 +77,7 @@ Swag 是一个 Go 工具，可以将代码中的注释转换为 Swagger 2.0 文�
 
 #### 获取单个资源
 ```go
+// FetchOne godoc
 // @Summary       获取账户
 // @Description   通过ID获取账户详情
 // @Tags          accounts
@@ -92,6 +94,7 @@ func (c *Controller) GetAccount(ctx *gin.Context) {
 
 #### 列表查询
 ```go
+// ListQuery godoc
 // @Summary       列出账户
 // @Description   按条件查询账户列表
 // @Tags          accounts
@@ -110,6 +113,7 @@ func (c *Controller) ListAccounts(ctx *gin.Context) {
 
 #### 创建资源
 ```go
+// CreateRes godoc
 // @Summary       创建账户
 // @Description   创建新账户
 // @Tags          accounts
@@ -305,12 +309,16 @@ r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 - **关键动作**：通过文件路径跳转至结构体定义（如 `models/user.go`），确认类型定义
 
 ## 3. 路由确认（强制要求）
-- **必须获取完整路由路径**（包含基础前缀，如 `/api/v1`）
+- **@Router 必须使用相对于 @BasePath 的路径** （即函数在路由组内注册的原始路径）
 - **操作规范**：
   1. 从函数调用层级向上追溯路由注册点
-  2. 定位基础前缀：查找 `router.Group("/api/v1")` 或 `router.Use("/api/v1")` 等路由组定义
+  2. 确认全局 @BasePath（通常在 main.go 中定义，如 /api/v1）
+  2. 提取该函数在路由组内的局部路径（例如：在 v1Group := r.Group("/api/v1") 下注册了 v1Group.GET("/users/:id", handler)，则 @Router 应为 /users/{id} [get]）
   3. 验证完整路径 = 基础前缀 + 函数注册路径（如 `"/api/v1/users/{id}"`）
-- **禁止行为**：不得省略基础前缀（如错误写为 `"/users/{id}"`）
+- **禁止行为**：
+  1. 不得省略基础前缀（如错误写为 `"/users/{id}"`）
+  2. 在 @Router 中重复写入 @BasePath（如 /api/v1/users/{id}）
+  3. 混淆 Gin 路径参数语法（Gin 用 :id，Swag 要求 {id}）
 
 ## 4. 注释生成与验证
 - **注释格式**：
@@ -324,9 +332,11 @@ r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
   | 参数匹配              | 参数名/位置是否与函数一致      | 与 `c.Param`/`c.Query` 一致 |
   | 结构体关联            | 返回值类型是否指向正确结构体   | 与 `models/User` 完全匹配 |
   | 路由方法一致性        | `[get]`/`[post]` 是否匹配注册  | 与 `router.GET`/`POST` 一致 |
+  | @BasePath剔除         | 是否设置了@BasePath           | 不包含@BasePath设定的路由前缀 |
 
 ## 5. 示例（正确用法）
 ```go
+// 函数名 godoc
 // @Summary 获取用户详情
 // @Description 通过用户ID获取用户信息
 // @Produce json
@@ -340,6 +350,20 @@ r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 // @Router /users/{id} [get]  // ❌ 缺少基础前缀 /api/v1
 ```
 
-> **执行准则**：路由前缀缺失将导致 API 文档与实际服务路径不匹配，必须通过路由组定义强制确认。所有生成的 `@Router` 指令必须包含完整基础路径（如 `/api/v1`），不得以任何理由省略。
+---
+
+### 7. 补充说明
+
+> **重要原则**：  
+> Swag 生成的 OpenAPI 文档会自动将 `@BasePath` 与 `@Router` 路径拼接。  
+> 因此，**`@Router` 永远只写“去掉 BasePath 后的剩余路径”**。  
+> 
+> 例如：
+> - 全局 BasePath: `/api/v1`
+> - 实际请求 URL: `GET /api/v1/orders/123`
+> - 则 `@Router` 应为：`/orders/{id} [get]`
+
+
+> **执行准则**：路由前缀缺失将导致 API 文档与实际服务路径不匹配，必须通过路由组定义强制确认
 
 请按照这些指南, 为用户编写注释，生成专业、完整的 Swagger 文档！
