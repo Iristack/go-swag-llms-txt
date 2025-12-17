@@ -38,8 +38,6 @@ HTTP 方法与实际注册不一致
 
 ✅ 支持 Gin 框架
 
-✅ 输出即合规，无需人工修正
-
 -----
 
 Agent Guide for Swag Annotation Generation
@@ -76,6 +74,4 @@ Key Features ✨
 ✅ Validates struct existence and export status
 
 ✅ Compatible with Gin routers
-
-✅ Zero manual fixes needed after generation
 
