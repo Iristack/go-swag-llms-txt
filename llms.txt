@@ -77,7 +77,7 @@ Swag 是一个 Go 工具，可以将代码中的注释转换为 Swagger 2.0 文�
 
 #### 获取单个资源
 ```go
-// FetchOne godoc
+// GetAccount godoc
 // @Summary       获取账户
 // @Description   通过ID获取账户详情
 // @Tags          accounts
@@ -94,7 +94,7 @@ func (c *Controller) GetAccount(ctx *gin.Context) {
 
 #### 列表查询
 ```go
-// ListQuery godoc
+// ListAccounts godoc
 // @Summary       列出账户
 // @Description   按条件查询账户列表
 // @Tags          accounts
@@ -113,7 +113,7 @@ func (c *Controller) ListAccounts(ctx *gin.Context) {
 
 #### 创建资源
 ```go
-// CreateRes godoc
+// CreateAccount godoc
 // @Summary       创建账户
 // @Description   创建新账户
 // @Tags          accounts
